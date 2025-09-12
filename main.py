@@ -132,9 +132,26 @@ schedule.every(5).minutes.do(sync_data)
 print("⏰ Primera sincronización...")
 sync_data()
 
-print("✅ Aplicación en ejección. Sincronizando productos cada 5 minutos...")
+print("✅ Aplicación en ejecución. Sincronizando productos cada 5 minutos...")
 
 # Mantener el script ejecutándose
 while True:
     schedule.run_pending()
     time.sleep(60)
+
+# =============================================================================
+# AGREGAR ESTO AL FINAL DEL ARCHIVO - PARA RENDER WEB SERVICE
+# =============================================================================
+from flask import Flask
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "✅ Sincronización Firebase-Sheets activa. Funcionando cada 5 minutos."
+
+# Mantener puerto abierto para Render
+if __name__ == '__main__':
+    import os
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
+    
