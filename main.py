@@ -86,15 +86,15 @@ def sync_data():
         return
     
     try:
-        # CAMBIA 'usuarios' por tu colección de Firebase
-        collection_ref = db.collection('usuarios')
+        # COLECCIÓN: productos (¡MODIFICADO!)
+        collection_ref = db.collection('productos')
         docs = collection_ref.stream()
         
-        # CAMBIA por el nombre EXACTO de tu Google Sheet
+        # NOMBRE de tu Google Sheet (cambia si es necesario)
         sheet = sheets_client.open("Mi Base de Datos Firebase").sheet1
         
-        # Encabezados (CAMBIA por tus campos)
-        headers = ['ID', 'Nombre', 'Email', 'Fecha Creación']
+        # ENCABEZADOS para productos (¡MODIFICADO!)
+        headers = ['ID', 'Nombre', 'Precio', 'Stock', 'Categoría']
         sheet.clear()
         sheet.append_row(headers)
         
@@ -105,17 +105,18 @@ def sync_data():
             row = [
                 doc.id,
                 data.get('nombre', ''),
-                data.get('email', ''),
-                data.get('fecha_creacion', '')
+                data.get('precio', ''),
+                data.get('stock', ''),
+                data.get('categoria', '')
             ]
             rows.append(row)
         
         # Escribir datos
         if rows:
             sheet.append_rows(rows)
-            print(f"✅ {len(rows)} registros sincronizados")
+            print(f"✅ {len(rows)} productos sincronizados")
         else:
-            print("ℹ️ No hay datos para sincronizar")
+            print("ℹ️ No hay productos para sincronizar")
             
     except Exception as e:
         print(f"❌ Error en sincronización: {str(e)}")
@@ -131,7 +132,7 @@ schedule.every(5).minutes.do(sync_data)
 print("⏰ Primera sincronización...")
 sync_data()
 
-print("✅ Aplicación en ejecución. Sincronizando cada 5 minutos...")
+print("✅ Aplicación en ejección. Sincronizando productos cada 5 minutos...")
 
 # Mantener el script ejecutándose
 while True:
