@@ -75,7 +75,7 @@ def setup_sheets():
         print(f"❌ Error Google Sheets: {str(e)}")
         return None
 
-# Sincronizar datos
+# Sincronizar datos (VERSIÓN QUE PRESERVA FÓRMULAS)
 def sync_data():
     print(f"\n🔄 Sincronización: {datetime.now().strftime('%H:%M:%S')}")
     
@@ -91,30 +91,50 @@ def sync_data():
         collection_ref = db.collection('productos')
         docs = collection_ref.stream()
         
-        # NOMBRE de tu Google Sheet (VERIFICAR QUE SEA EXACTO)
+        # NOMBRE de tu Google Sheet
         sheet = sheets_client.open("CCB Registros Proceso").sheet1
         
-        # ENCABEZADOS para productos
-        headers = ['ID', 'Nombre', 'Precio', 'Stock', 'Categoría']
-        sheet.clear()
-        sheet.append_row(headers)
+        # ✅ OBTENER todos los datos existentes (para preservar fórmulas)
+        all_data = sheet.get_all_values()
         
-        # Recopilar datos
+        # ✅ ENCONTRAR dónde terminan los datos y empiezan las fórmulas
+        data_end_row = 1  # Empezar después de headers
+        for i, row in enumerate(all_data[1:], start=2):  # Skip header
+            if not any(row[1:5]):  # Si las celdas de datos (B-E) están vacías
+                data_end_row = i - 1
+                break
+        else:
+            data_end_row = len(all_data)
+        
+        # ✅ LIMPIAR SOLO las celdas de datos (columnas A-E) - NO toda la hoja
+        if data_end_row > 1:  # Si hay datos existentes
+            # Solo limpia celdas A2:EX (donde X es la última fila con datos)
+            sheet.batch_clear([f"A2:E{data_end_row}"])
+            print(f"✅ Celdas limpiadas: A2:E{data_end_row}")
+        
+        # Recopilar NUEVOS datos de Firebase
         rows = []
         for doc in docs:
             data = doc.to_dict()
             row = [
                 doc.id,
-                str(data.get('nombre', '')),  # Convertir a string por seguridad
+                str(data.get('nombre', '')),
                 str(data.get('precio', '')),
                 str(data.get('stock', '')),
                 str(data.get('categoria', ''))
             ]
             rows.append(row)
         
-        # Escribir datos
+        # Escribir NUEVOS datos (después de la fila 1)
         if rows:
-            sheet.append_rows(rows)
+            # ✅ Escribir SOLO en columnas A-E
+            cell_list = sheet.range(f"A2:E{len(rows) + 1}")
+            
+            for i, row in enumerate(rows):
+                for j, value in enumerate(row):
+                    cell_list[i * 5 + j].value = value
+            
+            sheet.update_cells(cell_list)
             print(f"✅ {len(rows)} productos sincronizados")
             print(f"📊 Datos sincronizados: {rows}")
         else:
@@ -123,7 +143,7 @@ def sync_data():
     except Exception as e:
         print(f"❌ Error REAL en sincronización: {str(e)}")
         import traceback
-        traceback.print_exc()  # Esto mostrará el error completo
+        traceback.print_exc()
 
 # Configuración inicial
 print("🚀 Iniciando aplicación de sincronización...")
