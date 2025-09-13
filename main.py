@@ -85,7 +85,7 @@ def keep_alive():
     except Exception as e:
         print(f"⚠️  Keep-alive falló: {str(e)} (normal en free tier)")
 
-# Sincronizar datos (VERSIÓN QUE EVITA DUPLICADOS)
+# Sincronizar datos con SUMA INDIVIDUAL
 def sync_data():
     print(f"\n🔄 Sincronización: {datetime.now().strftime('%H:%M:%S')}")
     
@@ -109,23 +109,37 @@ def sync_data():
         existing_ids = set()
         
         # Extraer todos los IDs que ya están en Sheets (columna A)
-        if len(existing_data) > 1:  # Si hay más de solo headers
-            for row in existing_data[1:]:  # Saltar header
-                if row and row[0]:  # Si hay ID en columna A
+        if len(existing_data) > 1:
+            for row in existing_data[1:]:
+                if row and row[0]:
                     existing_ids.add(row[0])
+        
+        # ✅ ACTUALIZAR HEADERS si no existen
+        if len(existing_data) == 0 or len(existing_data[0]) < 6:
+            headers = ['ID', 'Nombre', 'Precio', 'Stock', 'Categoría', 'Suma']
+            sheet.update('A1:F1', [headers])
+            print("✅ Headers actualizados con columna Suma")
         
         # Recopilar SOLO NUEVOS datos de Firebase
         new_rows = []
+        
         for doc in docs:
+            data = doc.to_dict()
+            precio = float(data.get('precio', 0) or 0)
+            stock = float(data.get('stock', 0) or 0)
+            
+            # ✅ CALCULAR SUMA INDIVIDUAL: Precio + Stock
+            suma_individual = precio + stock
+            
             # ✅ VERIFICAR si este ID ya existe en Sheets
             if doc.id not in existing_ids:
-                data = doc.to_dict()
                 row = [
                     doc.id,
                     str(data.get('nombre', '')),
-                    str(data.get('precio', '')),
-                    str(data.get('stock', '')),
-                    str(data.get('categoria', ''))
+                    str(precio),
+                    str(stock),
+                    str(data.get('categoria', '')),
+                    str(suma_individual)  # ← COLUMNA F: SUMA
                 ]
                 new_rows.append(row)
         
@@ -133,13 +147,15 @@ def sync_data():
         if new_rows:
             # Encontrar la última fila con datos
             last_row = len(existing_data) + 1
+            if len(existing_data) <= 1:
+                last_row = 2
             
-            # Escribir los nuevos datos
+            # Escribir los nuevos datos (columnas A-F)
             for i, row in enumerate(new_rows):
-                sheet.update(f'A{last_row + i}:E{last_row + i}', [row])
+                sheet.update(f'A{last_row + i}:F{last_row + i}', [row])
             
             print(f"✅ {len(new_rows)} NUEVOS productos agregados")
-            print(f"📊 Nuevos datos: {new_rows}")
+            print(f"📊 Nuevos datos con suma: {new_rows}")
         else:
             print("ℹ️ No hay nuevos productos para sincronizar")
             
