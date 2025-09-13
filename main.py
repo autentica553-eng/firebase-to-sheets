@@ -8,8 +8,8 @@ from datetime import datetime
 import os
 import json
 from flask import Flask
-import requests  # ← NUEVA IMPORTACIÓN
-import threading  # ← NUEVA IMPORTACIÓN
+import requests
+import threading
 
 # Configurar archivos desde variables de entorno
 def setup_environment():
@@ -85,7 +85,7 @@ def keep_alive():
     except Exception as e:
         print(f"⚠️  Keep-alive falló: {str(e)} (normal en free tier)")
 
-# Sincronizar datos
+# Sincronizar datos (VERSIÓN QUE EVITA DUPLICADOS)
 def sync_data():
     print(f"\n🔄 Sincronización: {datetime.now().strftime('%H:%M:%S')}")
     
@@ -104,43 +104,44 @@ def sync_data():
         # NOMBRE de tu Google Sheet
         sheet = sheets_client.open("CCB Registros Proceso").sheet1
         
-        # ✅ OBTENER todos los datos existentes para encontrar la última fila
-        all_data = sheet.get_all_values()
+        # ✅ OBTENER todos los datos existentes en Google Sheets
+        existing_data = sheet.get_all_values()
+        existing_ids = set()
         
-        # ✅ ENCONTRAR la última fila con datos
-        last_row = len(all_data) + 1  # Empezar después del último dato
+        # Extraer todos los IDs que ya están en Sheets (columna A)
+        if len(existing_data) > 1:  # Si hay más de solo headers
+            for row in existing_data[1:]:  # Saltar header
+                if row and row[0]:  # Si hay ID en columna A
+                    existing_ids.add(row[0])
         
-        # Si solo hay headers, empezar en fila 2
-        if len(all_data) <= 1:
-            last_row = 2
-        
-        # Recopilar NUEVOS datos de Firebase
-        rows = []
+        # Recopilar SOLO NUEVOS datos de Firebase
+        new_rows = []
         for doc in docs:
-            data = doc.to_dict()
-            row = [
-                doc.id,
-                str(data.get('nombre', '')),
-                str(data.get('precio', '')),
-                str(data.get('stock', '')),
-                str(data.get('categoria', ''))
-            ]
-            rows.append(row)
+            # ✅ VERIFICAR si este ID ya existe en Sheets
+            if doc.id not in existing_ids:
+                data = doc.to_dict()
+                row = [
+                    doc.id,
+                    str(data.get('nombre', '')),
+                    str(data.get('precio', '')),
+                    str(data.get('stock', '')),
+                    str(data.get('categoria', ''))
+                ]
+                new_rows.append(row)
         
-        # ✅ ESCRIBIR NUEVOS datos DEBAJO de los existentes
-        if rows:
-            # Encontrar la última fila vacía
-            while last_row <= sheet.row_count and any(sheet.row_values(last_row)):
-                last_row += 1
+        # ✅ ESCRIBIR SOLO NUEVOS datos
+        if new_rows:
+            # Encontrar la última fila con datos
+            last_row = len(existing_data) + 1
             
             # Escribir los nuevos datos
-            for i, row in enumerate(rows):
+            for i, row in enumerate(new_rows):
                 sheet.update(f'A{last_row + i}:E{last_row + i}', [row])
             
-            print(f"✅ {len(rows)} productos agregados debajo (fila {last_row})")
-            print(f"📊 Datos sincronizados: {rows}")
+            print(f"✅ {len(new_rows)} NUEVOS productos agregados")
+            print(f"📊 Nuevos datos: {new_rows}")
         else:
-            print("ℹ️ No hay productos para sincronizar")
+            print("ℹ️ No hay nuevos productos para sincronizar")
             
     except Exception as e:
         print(f"❌ Error REAL en sincronización: {str(e)}")
@@ -154,7 +155,7 @@ setup_environment()
 # Programar ejecuciones cada 5 minutos (sincronización)
 schedule.every(5).minutes.do(sync_data)
 
-# Programar keep-alive cada 10 minutos (mantener despierto)  ← NUEVO
+# Programar keep-alive cada 10 minutos (mantener despierto)
 schedule.every(10).minutes.do(keep_alive)
 
 # Primera ejecución
