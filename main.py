@@ -7,6 +7,7 @@ import time
 from datetime import datetime
 import os
 import json
+from flask import Flask
 
 # Configurar archivos desde variables de entorno
 def setup_environment():
@@ -134,15 +135,7 @@ sync_data()
 
 print("✅ Aplicación en ejecución. Sincronizando productos cada 5 minutos...")
 
-# Mantener el script ejecutándose
-while True:
-    schedule.run_pending()
-    time.sleep(60)
-
-# =============================================================================
-# AGREGAR ESTO AL FINAL DEL ARCHIVO - PARA RENDER WEB SERVICE
-# =============================================================================
-from flask import Flask
+# Crear app de Flask
 app = Flask(__name__)
 
 @app.route('/')
@@ -151,7 +144,17 @@ def home():
 
 # Mantener puerto abierto para Render
 if __name__ == '__main__':
-    import os
-    port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port)
+    # Ejecutar el scheduler en un hilo separado
+    import threading
+    def run_scheduler():
+        while True:
+            schedule.run_pending()
+            time.sleep(60)
     
+    # Iniciar el scheduler en segundo plano
+    scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
+    scheduler_thread.start()
+    
+    # Iniciar Flask (esto abre el puerto para Render)
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
