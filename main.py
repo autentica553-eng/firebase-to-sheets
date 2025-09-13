@@ -87,14 +87,14 @@ def sync_data():
         return
     
     try:
-        # COLECCIÓN: productos (¡MODIFICADO!)
+        # COLECCIÓN: productos
         collection_ref = db.collection('productos')
         docs = collection_ref.stream()
         
-        # NOMBRE de tu Google Sheet (cambia si es necesario)
-        sheet = sheets_client.open("Mi Base de Datos Firebase").sheet1
+        # NOMBRE de tu Google Sheet (VERIFICAR QUE SEA EXACTO)
+        sheet = sheets_client.open("CCB Registros Proceso").sheet1
         
-        # ENCABEZADOS para productos (¡MODIFICADO!)
+        # ENCABEZADOS para productos
         headers = ['ID', 'Nombre', 'Precio', 'Stock', 'Categoría']
         sheet.clear()
         sheet.append_row(headers)
@@ -105,10 +105,10 @@ def sync_data():
             data = doc.to_dict()
             row = [
                 doc.id,
-                data.get('nombre', ''),
-                data.get('precio', ''),
-                data.get('stock', ''),
-                data.get('categoria', '')
+                str(data.get('nombre', '')),  # Convertir a string por seguridad
+                str(data.get('precio', '')),
+                str(data.get('stock', '')),
+                str(data.get('categoria', ''))
             ]
             rows.append(row)
         
@@ -116,11 +116,14 @@ def sync_data():
         if rows:
             sheet.append_rows(rows)
             print(f"✅ {len(rows)} productos sincronizados")
+            print(f"📊 Datos sincronizados: {rows}")
         else:
             print("ℹ️ No hay productos para sincronizar")
             
     except Exception as e:
-        print(f"❌ Error en sincronización: {str(e)}")
+        print(f"❌ Error REAL en sincronización: {str(e)}")
+        import traceback
+        traceback.print_exc()  # Esto mostrará el error completo
 
 # Configuración inicial
 print("🚀 Iniciando aplicación de sincronización...")
