@@ -8,6 +8,8 @@ from datetime import datetime
 import os
 import json
 from flask import Flask
+import requests  # ← NUEVA IMPORTACIÓN
+import threading  # ← NUEVA IMPORTACIÓN
 
 # Configurar archivos desde variables de entorno
 def setup_environment():
@@ -75,7 +77,15 @@ def setup_sheets():
         print(f"❌ Error Google Sheets: {str(e)}")
         return None
 
-# Sincronizar datos (VERSIÓN QUE PRESERVA FÓRMULAS)
+# Función keep-alive para mantener Render despierto
+def keep_alive():
+    try:
+        requests.get("https://firebase-to-sheets.onrender.com", timeout=10)
+        print("✅ Keep-alive ping enviado")
+    except Exception as e:
+        print(f"⚠️  Keep-alive falló: {str(e)} (normal en free tier)")
+
+# Sincronizar datos
 def sync_data():
     print(f"\n🔄 Sincronización: {datetime.now().strftime('%H:%M:%S')}")
     
@@ -94,23 +104,15 @@ def sync_data():
         # NOMBRE de tu Google Sheet
         sheet = sheets_client.open("CCB Registros Proceso").sheet1
         
-        # ✅ OBTENER todos los datos existentes (para preservar fórmulas)
+        # ✅ OBTENER todos los datos existentes para encontrar la última fila
         all_data = sheet.get_all_values()
         
-        # ✅ ENCONTRAR dónde terminan los datos y empiezan las fórmulas
-        data_end_row = 1  # Empezar después de headers
-        for i, row in enumerate(all_data[1:], start=2):  # Skip header
-            if not any(row[1:5]):  # Si las celdas de datos (B-E) están vacías
-                data_end_row = i - 1
-                break
-        else:
-            data_end_row = len(all_data)
+        # ✅ ENCONTRAR la última fila con datos
+        last_row = len(all_data) + 1  # Empezar después del último dato
         
-        # ✅ LIMPIAR SOLO las celdas de datos (columnas A-E) - NO toda la hoja
-        if data_end_row > 1:  # Si hay datos existentes
-            # Solo limpia celdas A2:EX (donde X es la última fila con datos)
-            sheet.batch_clear([f"A2:E{data_end_row}"])
-            print(f"✅ Celdas limpiadas: A2:E{data_end_row}")
+        # Si solo hay headers, empezar en fila 2
+        if len(all_data) <= 1:
+            last_row = 2
         
         # Recopilar NUEVOS datos de Firebase
         rows = []
@@ -125,17 +127,17 @@ def sync_data():
             ]
             rows.append(row)
         
-        # Escribir NUEVOS datos (después de la fila 1)
+        # ✅ ESCRIBIR NUEVOS datos DEBAJO de los existentes
         if rows:
-            # ✅ Escribir SOLO en columnas A-E
-            cell_list = sheet.range(f"A2:E{len(rows) + 1}")
+            # Encontrar la última fila vacía
+            while last_row <= sheet.row_count and any(sheet.row_values(last_row)):
+                last_row += 1
             
+            # Escribir los nuevos datos
             for i, row in enumerate(rows):
-                for j, value in enumerate(row):
-                    cell_list[i * 5 + j].value = value
+                sheet.update(f'A{last_row + i}:E{last_row + i}', [row])
             
-            sheet.update_cells(cell_list)
-            print(f"✅ {len(rows)} productos sincronizados")
+            print(f"✅ {len(rows)} productos agregados debajo (fila {last_row})")
             print(f"📊 Datos sincronizados: {rows}")
         else:
             print("ℹ️ No hay productos para sincronizar")
@@ -149,14 +151,21 @@ def sync_data():
 print("🚀 Iniciando aplicación de sincronización...")
 setup_environment()
 
-# Programar ejecuciones cada 5 minutos
+# Programar ejecuciones cada 5 minutos (sincronización)
 schedule.every(5).minutes.do(sync_data)
+
+# Programar keep-alive cada 10 minutos (mantener despierto)  ← NUEVO
+schedule.every(10).minutes.do(keep_alive)
 
 # Primera ejecución
 print("⏰ Primera sincronización...")
 sync_data()
 
-print("✅ Aplicación en ejecución. Sincronizando productos cada 5 minutos...")
+# Primer keep-alive
+print("🔔 Primer keep-alive...")
+keep_alive()
+
+print("✅ Aplicación en ejecución. Sincronizando cada 5 minutos + Keep-alive cada 10 minutos...")
 
 # Crear app de Flask
 app = Flask(__name__)
