@@ -76,6 +76,7 @@ def setup_sheets():
 # Función keep-alive para mantener Render despierto
 def keep_alive():
     try:
+        # IMPORTANTE: Cambia esta URL por la de tu app en Render
         requests.get("https://tu-app.onrender.com", timeout=10)
         print("✅ Keep-alive ping enviado")
     except Exception as e:
@@ -102,15 +103,17 @@ def sync_collection(collection_name, worksheet, existing_ids):
                 continue
             
             if collection_name == 'cocimiento':
-                # ESTRUCTURA ESPECIAL PARA COCIMIENTO
+                # COCIMIENTO - desde fila 6
                 row = [''] * 13
-                row[0] = doc.id  # ✅ Columna A: ID oculto
+                row[0] = doc.id  # Columna A: ID oculto
                 row[1] = fecha  # Columna B: Fecha
-                row[2] = data.get('Tipo (Ej: Judas) holi', ''),
+                row[2] = data.get('Tipo (Ej: Judas) holi', '')
                 row[3] = data.get('N° Cocimiento (Ej: 102)', '')  # Columna D
                 row[4] = data.get('A Tq N° (Ej: 4)', '')  # Columna E
                 row[5] = data.get('pH (Mosto Macerado) (Ej: 5.4)', '')  # Columna F
+                row[6] = ''  # Columna G (vacía)
                 row[7] = data.get('Extracto original [%] p/p (Primer Mosto) (Ej: 18.5)', '')  # Columna H
+                row[8] = ''  # Columna I (vacía)
                 row[9] = data.get('Extracto original [%] p/p (Mosto Frío) (Ej: 16.5)', '')  # Columna J
                 row[10] = data.get('pH(Mosto Frío) (Ej: 5.43)', '')  # Columna K
                 row[11] = data.get('Color [EBC] (Mosto Frío) (Ej: 8.5)', '')  # Columna L
@@ -118,103 +121,125 @@ def sync_collection(collection_name, worksheet, existing_ids):
                 
                 new_rows.append(row)
                 
-            else:
-                # Para las otras colecciones, mantener formato original
-                row = [doc.id, fecha]  # ✅ ID + Fecha
+            elif collection_name == 'fermentacion':
+                # FERMENTACIÓN - desde fila 6 (columnas B, C, E, F, G, H, I, J)
+                row = [''] * 11  # A-K (11 columnas)
+                row[0] = doc.id  # Columna A: ID oculto
+                row[1] = fecha  # Columna B: Fecha
+                row[2] = data.get('Tipo (Ej: Autentica)', '')  # Columna C: Tipo
+                # Columna D vacía
+                row[4] = data.get('Tq N°(Ej: 7)', '')  # Columna E: Tq N°
+                row[5] = data.get('pH (Ej: 4.36)', '')  # Columna F: pH
+                row[6] = data.get('Color [EBC] (Ej: 9.5)', '')  # Columna G: Color
+                row[7] = data.get('Turbidez [EBC] (Ej: 18.92)', '')  # Columna H: Turbidez
+                row[8] = data.get('Extrácto aparente [%] p/p (Ej: 2.70)', '')  # Columna I: Ext. Aparente
+                row[9] = data.get('Extrácto original [%] p/p (Ej: 16.0)', '')  # Columna J: Ext. Original
+                # Columna K vacía
                 
-                if collection_name == 'fermentacion':
-                    row.extend([
-                        data.get('Tipo (Ej: Autentica)', ''),
-                        data.get('N° Cocimiento (Ej: 341-342-343)', ''),
-                        data.get('Tq N°(Ej: 7)', ''),
-                        data.get('pH (Ej: 4.36)', ''),
-                        data.get('Color [EBC] (Ej: 9.5)', ''),
-                        data.get('Turbidez [EBC] (Ej: 18.92)', ''),
-                        data.get('Extrácto aparente [%] p/p (Ej: 2.70)', ''),
-                        data.get('Extrácto original [%] p/p (Ej: 16.0)', '')
-                    ])
-                elif collection_name == 'tanque_presion':
-                    row.extend([
-                        data.get('Tipo (Ej: Trimalta )', ''),
-                        data.get('N° Cocimiento (Ej:125-126)', ''),
-                        data.get('Tp N° (Ej: 2)', ''),
-                        data.get('Tq N° (Ej: 9-7-6)', ''),
-                        data.get('Sedimentos (0/S/SS/SSS) (EJ: S)', ''),
-                        data.get('Color [EBC] (Ej: 7.5)', ''),
-                        data.get('Extrácto aparente [%] p/p (Ej: 2.06)', ''),
-                        data.get('Volumen total [L] (Ej: 6650)', ''),
-                        data.get('Volumen H2O [L] (Ej: 1850)', ''),
-                        data.get('Tanque A (Ej: 1)', ''),
-                        data.get('Volumen total del Tanque A [L] (Ej: 2650)', ''),
-                        data.get('Tanque B (Ej: 14)', ''),
-                        data.get('Volumen total del Tanque B [L] (Ej: 1950)', ''),
-                        data.get('Tanque C (Ej: 9)', ''),
-                        data.get('Volumen total del Tanque C [L] (Ej: 200)', ''),
-                        data.get('Observaciones', '')
-                    ])
-                elif collection_name == 'envasado':
-                    row.extend([
-                        data.get('Tipo (Ej: Occidental)', ''),
-                        data.get('Calibre [ml] (Ej: 620)', ''),
-                        data.get('Tq N° (Ej: 10-12)', ''),
-                        data.get('Tp N° (Ej: 1)', ''),
-                        data.get('N° Cocimiento (Ej: 91-92-95-96)', ''),
-                        data.get('Turbidez [EBC] (Ej: 0.3)', ''),
-                        data.get('Degustación (OK ; no OK)', ''),
-                        data.get('Sedimentos (0/S/SS/SSS) (Ej: 0)', ''),
-                        data.get('T set [°C] (Pasteurizadora) (Ej: 69)', ''),
-                        data.get('T max [°C] (Pasteurizadora) (Ej: 69.1)', ''),
-                        data.get('UP', ''),
-                        data.get('NaOH [%] (Lavadora) (Ej: 0.48)', ''),
-                        data.get('Observaciones (Ej: Adición 1/2 bolsa soda)', '')
-                    ])
-                elif collection_name == 'producto_terminado':
-                    row.extend([
-                        data.get('Código (Envasado/Vencimiento) (Ej: L = 150-00438 / V = 30-5-26)', ''),
-                        data.get('Tipo (Ej: Trimalta Quinua)', ''),
-                        data.get('Calibre [ml] (Ej: 300)', ''),
-                        data.get('Tq N° (Ej: 1-10)', ''),
-                        data.get('Tp N° (Ej: 2)', ''),
-                        data.get('N° Cocimiento (Ej: 63-64)', ''),
-                        data.get('pH (Ej: 4.67)', ''),
-                        data.get('Color [EBC] (Ej: 150)', ''),
-                        data.get('Extrácto aparente [%] p/p (Ej: 11.2)', ''),
-                        data.get('Espuma [seg] (123)', ''),
-                        data.get('Sedimentos 0°C (0/S/SS/SSS) (Ej: S)', ''),
-                        data.get('Sedimentos 20°C (0/S/SS/SSS) (Ej: SS)', ''),
-                        data.get('Observaciones', '')
-                    ])
+                new_rows.append(row)
+                
+            elif collection_name == 'tanque_presion':
+                # TANQUE DE PRESIÓN - desde fila 5
+                row = [''] * 20  # A-T (20 columnas)
+                row[0] = doc.id  # Columna A: ID oculto
+                row[1] = fecha  # Columna B: Fecha
+                row[2] = data.get('Tipo (Ej: Trimalta )', '')  # Columna C: Tipo
+                row[3] = data.get('N° Cocimiento (Ej:125-126)', '')  # Columna D: N° Cocimiento
+                row[4] = data.get('Tp N° (Ej: 2)', '')  # Columna E: Tp N°
+                row[5] = data.get('Tq N° (Ej: 9-7-6)', '')  # Columna F: Tq N°
+                # Columna G vacía
+                row[7] = data.get('Sedimentos (0/S/SS/SSS) (EJ: S)', '')  # Columna H: Sedimentos
+                row[8] = data.get('Color [EBC] (Ej: 7.5)', '')  # Columna I: Color
+                row[9] = data.get('Extrácto aparente [%] p/p (Ej: 2.06)', '')  # Columna J: Ext. Aparente
+                row[10] = data.get('Volumen total [L] (Ej: 6650)', '')  # Columna K: Volumen total
+                row[11] = data.get('Volumen H2O [L] (Ej: 1850)', '')  # Columna L: Volumen H2O
+                row[12] = data.get('Tanque A (Ej: 1)', '')  # Columna M: Tanque A
+                row[13] = data.get('Volumen total del Tanque A [L] (Ej: 2650)', '')  # Columna N: Volumen Tanque A
+                row[14] = data.get('Tanque B (Ej: 14)', '')  # Columna O: Tanque B
+                row[15] = data.get('Volumen total del Tanque B [L] (Ej: 1950)', '')  # Columna P: Volumen Tanque B
+                row[16] = data.get('Tanque C (Ej: 9)', '')  # Columna Q: Tanque C
+                row[17] = data.get('Volumen total del Tanque C [L] (Ej: 200)', '')  # Columna R: Volumen Tanque C
+                row[18] = data.get('Observaciones', '')  # Columna S: Observaciones
+                # Columna T vacía
+                
+                new_rows.append(row)
+                
+            elif collection_name == 'envasado':
+                # ENVASADO - desde fila 6
+                row = [''] * 15  # A-O (15 columnas)
+                row[0] = doc.id  # Columna A: ID oculto
+                row[1] = fecha  # Columna B: Fecha
+                row[2] = data.get('Tipo (Ej: Occidental)', '')  # Columna C: Tipo
+                row[3] = data.get('Calibre [ml] (Ej: 620)', '')  # Columna D: Calibre
+                row[4] = data.get('Tq N° (Ej: 10-12)', '')  # Columna E: Tq N°
+                row[5] = data.get('Tp N° (Ej: 1)', '')  # Columna F: Tp N°
+                row[6] = data.get('N° Cocimiento (Ej: 91-92-95-96)', '')  # Columna G: N° Cocimiento
+                row[7] = data.get('Turbidez [EBC] (Ej: 0.3)', '')  # Columna H: Turbidez
+                row[8] = data.get('Degustación (OK ; no OK)', '')  # Columna I: Degustación
+                row[9] = data.get('Sedimentos (0/S/SS/SSS) (Ej: 0)', '')  # Columna J: Sedimentos
+                row[10] = data.get('T set [°C] (Pasteurizadora) (Ej: 69)', '')  # Columna K: T set
+                row[11] = data.get('T max [°C] (Pasteurizadora) (Ej: 69.1)', '')  # Columna L: T max
+                row[12] = data.get('UP', '')  # Columna M: UP
+                row[13] = data.get('NaOH [%] (Lavadora) (Ej: 0.48)', '')  # Columna N: NaOH
+                row[14] = data.get('Observaciones (Ej: Adición 1/2 bolsa soda)', '')  # Columna O: Observaciones
+                
+                new_rows.append(row)
+                
+            elif collection_name == 'producto_terminado':
+                # PRODUCTO TERMINADO - desde fila 5
+                row = [''] * 15  # A-O (15 columnas)
+                row[0] = doc.id  # Columna A: ID oculto
+                row[1] = fecha  # Columna B: Fecha
+                row[2] = data.get('Código (Envasado/Vencimiento) (Ej: L = 150-00438 / V = 30-5-26)', '')  # Columna C: Código
+                row[3] = data.get('Tipo (Ej: Trimalta Quinua)', '')  # Columna D: Tipo
+                row[4] = data.get('Calibre [ml] (Ej: 300)', '')  # Columna E: Calibre
+                row[5] = data.get('Tq N° (Ej: 1-10)', '')  # Columna F: Tq N°
+                row[6] = data.get('Tp N° (Ej: 2)', '')  # Columna G: Tp N°
+                row[7] = data.get('N° Cocimiento (Ej: 63-64)', '')  # Columna H: N° Cocimiento
+                row[8] = data.get('pH (Ej: 4.67)', '')  # Columna I: pH
+                row[9] = data.get('Color [EBC] (Ej: 150)', '')  # Columna J: Color
+                row[10] = data.get('Extrácto aparente [%] p/p (Ej: 11.2)', '')  # Columna K: Ext. Aparente
+                row[11] = data.get('Espuma [seg] (123)', '')  # Columna L: Espuma
+                row[12] = data.get('Sedimentos 0°C (0/S/SS/SSS) (Ej: S)', '')  # Columna M: Sedimentos 0°C
+                row[13] = data.get('Sedimentos 20°C (0/S/SS/SSS) (Ej: SS)', '')  # Columna N: Sedimentos 20°C
+                row[14] = data.get('Observaciones', '')  # Columna O: Observaciones
                 
                 new_rows.append(row)
         
         # Escribir nuevos datos
         if new_rows:
-            # Para COCIMIENTO: empezar desde fila 6
+            # Determinar la fila de inicio según la colección
+            if collection_name == 'cocimiento' or collection_name == 'fermentacion' or collection_name == 'envasado':
+                start_row = 6
+            else:  # tanque_presion y producto_terminado
+                start_row = 5
+                
+            # Buscar la última fila con datos
+            existing_data = worksheet.get_all_values()
+            last_row = start_row
+            
+            # Encontrar la última fila no vacía desde la fila de inicio hacia abajo
+            for i in range(start_row-1, len(existing_data)):
+                if existing_data[i]:  # Si la fila tiene datos
+                    last_row = i + 1
+            
+            # Determinar el rango de columnas según la colección
             if collection_name == 'cocimiento':
-                # Buscar la última fila con datos (empezando desde fila 6)
-                existing_data = worksheet.get_all_values()
-                last_row = 6  # Empezar en fila 6
-                
-                # Encontrar la última fila no vacía desde la 6 hacia abajo
-                for i in range(5, len(existing_data)):
-                    if existing_data[i]:  # Si la fila tiene datos
-                        last_row = i + 1
-                
-                # Escribir datos desde la última fila vacía
-                for i, row in enumerate(new_rows):
-                    range_start = f'A{last_row + i}'
-                    range_end = f'M{last_row + i}'  # Hasta columna M
-                    worksheet.update(f'{range_start}:{range_end}', [row])
-                    
-            else:
-                # Para otras colecciones: formato normal
-                existing_data = worksheet.get_all_values()
-                last_row = len(existing_data) + 1 if len(existing_data) > 1 else 2
-                
-                for i, row in enumerate(new_rows):
-                    range_start = f'A{last_row + i}'
-                    range_end = chr(65 + len(row) - 1) + str(last_row + i)
-                    worksheet.update(f'{range_start}:{range_end}', [row])
+                end_col = 'M'
+            elif collection_name == 'fermentacion':
+                end_col = 'K'
+            elif collection_name == 'tanque_presion':
+                end_col = 'T'
+            elif collection_name == 'envasado':
+                end_col = 'O'
+            elif collection_name == 'producto_terminado':
+                end_col = 'O'
+            
+            # Escribir datos desde la última fila vacía
+            for i, row in enumerate(new_rows):
+                range_start = f'A{last_row + i}'
+                range_end = f'{end_col}{last_row + i}'
+                worksheet.update(f'{range_start}:{range_end}', [row])
             
             return len(new_rows)
         return 0
@@ -258,14 +283,20 @@ def sync_data():
                     print(f"⚠️ Hoja {collection_name} no encontrada, saltando...")
                     continue
                 
-                # ✅ CORREGIDO: Obtener IDs existentes (columna A)
+                # Obtener IDs existentes (columna A)
                 existing_data = worksheet.get_all_values()
                 existing_ids = set()
                 
-                if len(existing_data) > 1:
-                    for row in existing_data[1:]:  # Saltar header
+                # Determinar la fila de inicio según la colección
+                if collection_name == 'cocimiento' or collection_name == 'fermentacion' or collection_name == 'envasado':
+                    start_idx = 5  # Saltar hasta la fila 5 (las primeras 5 filas son encabezados)
+                else:  # tanque_presion y producto_terminado
+                    start_idx = 4  # Saltar hasta la fila 4 (las primeras 4 filas son encabezados)
+                
+                if len(existing_data) > start_idx:
+                    for row in existing_data[start_idx:]:
                         if row and row[0]:  # Columna A tiene el ID
-                            existing_ids.add(row[0])  # ✅ CORREGIDO: existing_ids.add()
+                            existing_ids.add(row[0])
                 
                 # Sincronizar esta colección
                 new_count = sync_collection(collection_name, worksheet, existing_ids)
