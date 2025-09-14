@@ -181,8 +181,13 @@ def sync_collection(collection_name, worksheet, existing_ids):
                 # Guardar en diccionario para uso en tanque de presión
                 numero_tanque = data.get('Tq N°(Ej: 7)', '')
                 if numero_tanque and alcohol_volumen:
-                    clave_unica = f"TQ{numero_tanque}-{fecha}"
-                    tanques_alcohol[clave_unica] = alcohol_volumen
+                    # Guardar solo el valor más reciente por tanque
+                    tanques_alcohol[numero_tanque] = {
+                        'alcohol': alcohol_volumen,
+                        'fecha': fecha,
+                        'cocimiento': data.get('N° Cocimiento (Ej: 341-342-343)', '')
+                    }
+                    print(f"✅ Tanque {numero_tanque} actualizado: {alcohol_volumen}%")
                 
                 row = [''] * 15  # A-O (15 columnas para incluir cálculos)
                 row[0] = doc.id  # Columna A: ID oculto
@@ -220,15 +225,16 @@ def sync_collection(collection_name, worksheet, existing_ids):
                             num_tanque = data.get(f'Tanque {tanque} (Ej: 1)', '')
                             volumen_str = data.get(f'Volumen total del Tanque {tanque} [L] (Ej: 2650)', '')
                             
-                            if num_tanque and volumen_str:
+                            if num_tanque and volumen_str and num_tanque in tanques_alcohol:
                                 try:
                                     volumen = float(volumen_str)
-                                    clave_busqueda = f"TQ{num_tanque}-{fecha}"
-                                    
-                                    if clave_busqueda in tanques_alcohol:
-                                        alcohol_vol = float(tanques_alcohol[clave_busqueda])
-                                        alcohol_total += volumen * alcohol_vol
-                                        volumen_cerveza_total += volumen
+                                    alcohol_data = tanques_alcohol[num_tanque]
+                                    alcohol_vol = float(alcohol_data['alcohol'])
+                
+                                    alcohol_total += volumen * alcohol_vol
+                                    volumen_cerveza_total += volumen
+                
+                                    print(f"✅ Usando tanque {num_tanque}: {alcohol_vol}% (de {alcohol_data['fecha']})")
                                 except ValueError:
                                     continue
                         
@@ -432,6 +438,7 @@ schedule.every(10).minutes.do(keep_alive)
 # Primera ejecución
 print("⏰ Primera sincronización...")
 sync_data()
+print(f"📊 Diccionario actual: {list(tanques_alcohol.keys())}")            
 print("🔔 Primer keep-alive...")
 keep_alive()
 print("✅ Aplicación en ejecución. Sincronizando cada 5 minutos + Keep-alive cada 10 minutos...")
