@@ -204,6 +204,7 @@ def sync_collection(collection_name, worksheet, existing_ids):
                 new_rows.append(row)
                 
             elif collection_name == 'tanque_presion':
+                end_col = 'U'  # Ahora va hasta la columna U por el alcohol final
                 # TANQUE DE PRESIÓN - desde fila 5
                 alcohol_final = ""
                 
