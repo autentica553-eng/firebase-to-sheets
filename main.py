@@ -82,6 +82,48 @@ def keep_alive():
     except Exception as e:
         print(f"⚠️ Keep-alive falló: {str(e)}")
 
+# Funciones de cálculo para fermentación
+def calcular_peso_esp(extracto_aparente):
+    """Calcula Peso Esp = 0.99995121 + 0.00392802 * Extracto aparente"""
+    try:
+        return 0.99995121 + 0.00392802 * float(extracto_aparente)
+    except:
+        return ""
+
+def calcular_gaf(extracto_original, extracto_aparente):
+    """Calcula GAF = ((Extracto original - Extracto Aparente) / Extracto Original) * 100"""
+    try:
+        eo = float(extracto_original)
+        ea = float(extracto_aparente)
+        return ((eo - ea) / eo) * 100
+    except:
+        return ""
+
+def calcular_alcohol_peso(extracto_original, extracto_aparente):
+    """Calcula Alcohol Peso = (100*(Extracto original-Extracto aparente)/(100*2.5233-Extracto Original*1.1266))"""
+    try:
+        eo = float(extracto_original)
+        ea = float(extracto_aparente)
+        return (100 * (eo - ea)) / (100 * 2.5233 - eo * 1.1266)
+    except:
+        return ""
+
+def calcular_alcohol_volumen(alcohol_peso, peso_esp):
+    """Calcula Alcohol volumen = Alcohol Peso * Peso Esp / 0.791"""
+    try:
+        return float(alcohol_peso) * float(peso_esp) / 0.791
+    except:
+        return ""
+
+def calcular_extracto_real(extracto_original, alcohol_peso):
+    """Calcula Extracto Real = ((Extracto original*(1.0665*Alcohol Peso+100))/(100))-2.0665*Alcohol Peso"""
+    try:
+        eo = float(extracto_original)
+        ap = float(alcohol_peso)
+        return ((eo * (1.0665 * ap + 100)) / 100) - 2.0665 * ap
+    except:
+        return ""
+
 # Sincronizar una colección específica
 def sync_collection(collection_name, worksheet, existing_ids):
     db = setup_firebase()
@@ -123,18 +165,32 @@ def sync_collection(collection_name, worksheet, existing_ids):
                 
             elif collection_name == 'fermentacion':
                 # FERMENTACIÓN - desde fila 6 (columnas B, C, E, F, G, H, I, J)
-                row = [''] * 11  # A-K (11 columnas)
+                extracto_aparente = data.get('Extrácto aparente [%] p/p (Ej: 2.70)', '')
+                extracto_original = data.get('Extrácto original [%] p/p (Ej: 16.0)', '')
+                
+                # Realizar cálculos
+                peso_esp = calcular_peso_esp(extracto_aparente) if extracto_aparente else ""
+                gaf = calcular_gaf(extracto_original, extracto_aparente) if extracto_original and extracto_aparente else ""
+                alcohol_peso = calcular_alcohol_peso(extracto_original, extracto_aparente) if extracto_original and extracto_aparente else ""
+                alcohol_volumen = calcular_alcohol_volumen(alcohol_peso, peso_esp) if alcohol_peso and peso_esp else ""
+                extracto_real = calcular_extracto_real(extracto_original, alcohol_peso) if extracto_original and alcohol_peso else ""
+                
+                row = [''] * 15  # A-O (15 columnas para incluir cálculos)
                 row[0] = doc.id  # Columna A: ID oculto
                 row[1] = fecha  # Columna B: Fecha
                 row[2] = data.get('Tipo (Ej: Autentica)', '')  # Columna C: Tipo
-                row[3] = data.get('N° Cocimiento (Ej: 341-342-343)', '')
+                row[3] = data.get('N° Cocimiento (Ej: 341-342-343)', '')  # Columna D
                 row[4] = data.get('Tq N°(Ej: 7)', '')  # Columna E: Tq N°
                 row[5] = data.get('pH (Ej: 4.36)', '')  # Columna F: pH
                 row[6] = data.get('Color [EBC] (Ej: 9.5)', '')  # Columna G: Color
                 row[7] = data.get('Turbidez [EBC] (Ej: 18.92)', '')  # Columna H: Turbidez
-                row[8] = data.get('Extrácto aparente [%] p/p (Ej: 2.70)', '')  # Columna I: Ext. Aparente
-                row[9] = data.get('Extrácto original [%] p/p (Ej: 16.0)', '')  # Columna J: Ext. Original
-                # Columna K vacía
+                row[8] = extracto_aparente  # Columna I: Ext. Aparente
+                row[9] = extracto_original  # Columna J: Ext. Original
+                row[10] = extracto_real  # Columna K: Extracto Real
+                row[11] = alcohol_peso  # Columna L: Alcohol Peso
+                row[12] = alcohol_volumen  # Columna M: Alcohol Volumen
+                row[13] = peso_esp  # Columna N: Peso Esp
+                row[14] = gaf  # Columna O: GAF
                 
                 new_rows.append(row)
                 
@@ -218,7 +274,6 @@ def sync_collection(collection_name, worksheet, existing_ids):
             existing_data = worksheet.get_all_values()
             last_row = start_row
             
-            # Encontrar la última fila no vacía desde la fila de inicio hacia abajo
             # Buscar la primera fila VACÍA después de los datos existentes
             for i in range(start_row-1, len(existing_data)):
                if not existing_data[i]:  # Si la fila está VACÍA
@@ -232,7 +287,7 @@ def sync_collection(collection_name, worksheet, existing_ids):
             if collection_name == 'cocimiento':
                 end_col = 'M'
             elif collection_name == 'fermentacion':
-                end_col = 'K'
+                end_col = 'O'  # Ahora va hasta la columna O por los cálculos
             elif collection_name == 'tanque_presion':
                 end_col = 'T'
             elif collection_name == 'envasado':
