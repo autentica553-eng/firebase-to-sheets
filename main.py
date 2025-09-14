@@ -11,6 +11,9 @@ from flask import Flask
 import requests
 import threading
 
+# ✅ URL CORRECTA de tu app en Render
+RENDER_URL = "https://firebase-to-sheets.onrender.com"
+
 # Configurar archivos desde variables de entorno
 def setup_environment():
     print("🔧 Configurando entorno...")
@@ -73,14 +76,16 @@ def setup_sheets():
         print(f"❌ Error Google Sheets: {str(e)}")
         return None
 
-# Función keep-alive para mantener Render despierto
+# Función keep-alive mejorada para mantener Render despierto
 def keep_alive():
     try:
-        # IMPORTANTE: Cambia esta URL por la de tu app en Render
-        requests.get("https://tu-app.onrender.com", timeout=10)
-        print("✅ Keep-alive ping enviado")
+        # ✅ URL CORRECTA con endpoint específico
+        response = requests.get(f"{RENDER_URL}/keep-alive", timeout=10)
+        print(f"✅ Keep-alive exitoso: {response.status_code} - {datetime.now().strftime('%H:%M:%S')}")
+        return True
     except Exception as e:
         print(f"⚠️ Keep-alive falló: {str(e)}")
+        return False
 
 # Funciones de cálculo para fermentación
 def calcular_peso_esp(extracto_aparente):
@@ -431,9 +436,9 @@ def sync_data():
 print("🚀 Iniciando aplicación de sincronización...")
 setup_environment()
 
-# Programar ejecuciones
+# Programar ejecuciones - Keep-alive más frecuente
 schedule.every(5).minutes.do(sync_data)
-schedule.every(10).minutes.do(keep_alive)
+schedule.every(5).minutes.do(keep_alive)  # ⬅️ Cada 5 minutos en lugar de 10
 
 # Primera ejecución
 print("⏰ Primera sincronización...")
@@ -441,7 +446,7 @@ sync_data()
 print(f"📊 Diccionario actual: {list(tanques_alcohol.keys())}")            
 print("🔔 Primer keep-alive...")
 keep_alive()
-print("✅ Aplicación en ejecución. Sincronizando cada 5 minutos + Keep-alive cada 10 minutos...")
+print("✅ Aplicación en ejecución. Sincronizando cada 5 minutos + Keep-alive cada 5 minutos...")
 
 # Crear app de Flask
 app = Flask(__name__)
@@ -449,6 +454,15 @@ app = Flask(__name__)
 @app.route('/')
 def home():
     return "✅ Sincronización Firebase-Sheets activa. Funcionando cada 5 minutos."
+
+# ✅ Nuevo endpoint específico para keep-alive
+@app.route('/keep-alive')
+def keep_alive_endpoint():
+    return "✅ Keep-alive activo - " + datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+@app.route('/health')
+def health_check():
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 # Mantener puerto abierto para Render
 if __name__ == '__main__':
