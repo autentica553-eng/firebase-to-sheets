@@ -127,7 +127,7 @@ def sync_collection(collection_name, worksheet, existing_ids):
                 row[0] = doc.id  # Columna A: ID oculto
                 row[1] = fecha  # Columna B: Fecha
                 row[2] = data.get('Tipo (Ej: Autentica)', '')  # Columna C: Tipo
-                # Columna D vacía
+                row[3] = data.get('N° Cocimiento (Ej: 341-342-343)', '')
                 row[4] = data.get('Tq N°(Ej: 7)', '')  # Columna E: Tq N°
                 row[5] = data.get('pH (Ej: 4.36)', '')  # Columna F: pH
                 row[6] = data.get('Color [EBC] (Ej: 9.5)', '')  # Columna G: Color
