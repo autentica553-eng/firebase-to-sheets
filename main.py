@@ -102,26 +102,25 @@ def sync_collection(collection_name, worksheet, existing_ids):
                 continue
             
             if collection_name == 'cocimiento':
-                # ... (el resto del código igual)
+                # ESTRUCTURA ESPECIAL PARA COCIMIENTO
                 row = [''] * 13
-                row[1] = fecha
-                row[3] = data.get('N° Cocimiento (Ej: 102)', '')
-                row[4] = data.get('A Tq N° (Ej: 4)', '')
-                row[5] = data.get('pH (Mosto Macerado) (Ej: 5.4)', '')
-                row[7] = data.get('Extracto original [%] p/p (Primer Mosto) (Ej: 18.5)', '')
-                row[9] = data.get('Extracto original [%] p/p (Mosto Frío) (Ej: 16.5)', '')
-                row[10] = data.get('pH(Mosto Frío) (Ej: 5.43)', '')
-                row[11] = data.get('Color [EBC] (Mosto Frío) (Ej: 8.5)', '')
-                row[12] = data.get('Observaciones (Ej: Sin muestra frío)', '')
-                
-                # ✅ AGREGAR EL ID COMO PRIMERA COLUMNA OCULTA
-                row[0] = doc.id  # Columna A - ID oculto
+                row[0] = doc.id  # ✅ Columna A: ID oculto
+                row[1] = fecha  # Columna B: Fecha
+                row[2] = data.get('Tipo (Ej: Judas) holi', ''),
+                row[3] = data.get('N° Cocimiento (Ej: 102)', '')  # Columna D
+                row[4] = data.get('A Tq N° (Ej: 4)', '')  # Columna E
+                row[5] = data.get('pH (Mosto Macerado) (Ej: 5.4)', '')  # Columna F
+                row[7] = data.get('Extracto original [%] p/p (Primer Mosto) (Ej: 18.5)', '')  # Columna H
+                row[9] = data.get('Extracto original [%] p/p (Mosto Frío) (Ej: 16.5)', '')  # Columna J
+                row[10] = data.get('pH(Mosto Frío) (Ej: 5.43)', '')  # Columna K
+                row[11] = data.get('Color [EBC] (Mosto Frío) (Ej: 8.5)', '')  # Columna L
+                row[12] = data.get('Observaciones (Ej: Sin muestra frío)', '')  # Columna M
                 
                 new_rows.append(row)
                 
             else:
                 # Para las otras colecciones, mantener formato original
-                row = [fecha]
+                row = [doc.id, fecha]  # ✅ ID + Fecha
                 
                 if collection_name == 'fermentacion':
                     row.extend([
@@ -259,14 +258,14 @@ def sync_data():
                     print(f"⚠️ Hoja {collection_name} no encontrada, saltando...")
                     continue
                 
-                # Obtener fechas existentes (primera columna)
+                # ✅ CORREGIDO: Obtener IDs existentes (columna A)
                 existing_data = worksheet.get_all_values()
                 existing_ids = set()
                 
                 if len(existing_data) > 1:
-                    for row in existing_data[1:]:
-                        if row and row[0]:
-                            existing_dates.add(row[0])
+                    for row in existing_data[1:]:  # Saltar header
+                        if row and row[0]:  # Columna A tiene el ID
+                            existing_ids.add(row[0])  # ✅ CORREGIDO: existing_ids.add()
                 
                 # Sincronizar esta colección
                 new_count = sync_collection(collection_name, worksheet, existing_ids)
