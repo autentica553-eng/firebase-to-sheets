@@ -81,41 +81,8 @@ def keep_alive():
     except Exception as e:
         print(f"⚠️ Keep-alive falló: {str(e)}")
 
-# Obtener encabezados para cada colección (SIN ID)
-def get_headers_for_collection(collection_name):
-    headers_map = {
-        'cocimiento': [
-            'Fecha', 'Tipo', 'N° Cocimiento', 'A Tq N°', 'pH (Mosto Macerado)',
-            'Extracto original [%] p/p (Primer Mosto)', 'Extracto original [%] p/p (Mosto Frío)',
-            'pH(Mosto Frío)', 'Color [EBC] (Mosto Frío)', 'Observaciones'
-        ],
-        'fermentacion': [
-            'Fecha', 'Tipo', 'N° Cocimiento', 'Tq N°', 'pH', 'Color [EBC]',
-            'Turbidez [EBC]', 'Extrácto aparente [%] p/p', 'Extrácto original [%] p/p'
-        ],
-        'tanque_presion': [
-            'Fecha', 'Tipo', 'N° Cocimiento', 'Tp N°', 'Tq N°', 'Sedimentos (0/S/SS/SSS)',
-            'Color [EBC]', 'Extrácto aparente [%] p/p', 'Volumen total [L]', 'Volumen H2O [L]',
-            'Tanque A', 'Volumen total del Tanque A [L]', 'Tanque B', 'Volumen total del Tanque B [L]',
-            'Tanque C', 'Volumen total del Tanque C [L]', 'Observaciones'
-        ],
-        'envasado': [
-            'Fecha', 'Tipo', 'Calibre [ml]', 'Tq N°', 'Tp N°', 'N° Cocimiento',
-            'Turbidez [EBC]', 'Degustación (OK ; no OK)', 'Sedimentos (0/S/SS/SSS)',
-            'T set [°C] (Pasteurizadora)', 'T max [°C] (Pasteurizadora)', 'UP',
-            'NaOH [%] (Lavadora)', 'Observaciones'
-        ],
-        'producto_terminado': [
-            'Fecha', 'Código (Envasado/Vencimiento)', 'Tipo', 'Calibre [ml]', 'Tq N°',
-            'Tp N°', 'N° Cocimiento', 'pH', 'Color [EBC]', 'Extrácto aparente [%] p/p',
-            'Espuma [seg]', 'Sedimentos 0°C (0/S/SS/SSS)', 'Sedimentos 20°C (0/S/SS/SSS)',
-            'Observaciones'
-        ]
-    }
-    return headers_map.get(collection_name, [])
-
-# Sincronizar una colección específica (SIN ID)
-def sync_collection(collection_name, sheet, existing_dates):
+# Sincronizar una colección específica
+def sync_collection(collection_name, worksheet, existing_dates):
     db = setup_firebase()
     if not db:
         return 0
@@ -134,103 +101,139 @@ def sync_collection(collection_name, sheet, existing_dates):
             if fecha in existing_dates:
                 continue
             
-            # Construir fila según la colección (SIN ID)
-            row = [fecha]
-            
             if collection_name == 'cocimiento':
-                row.extend([
-                    data.get('Tipo (Ej: Judas) holi', ''),
-                    data.get('N° Cocimiento (Ej: 102)', ''),
-                    data.get('A Tq N° (Ej: 4)', ''),
-                    data.get('pH (Mosto Macerado) (Ej: 5.4)', ''),
-                    data.get('Extracto original [%] p/p (Primer Mosto) (Ej: 18.5)', ''),
-                    data.get('Extracto original [%] p/p (Mosto Frío) (Ej: 16.5)', ''),
-                    data.get('pH(Mosto Frío) (Ej: 5.43)', ''),
-                    data.get('Color [EBC] (Mosto Frío) (Ej: 8.5)', ''),
-                    data.get('Observaciones (Ej: Sin muestra frío)', '')
-                ])
-            elif collection_name == 'fermentacion':
-                row.extend([
-                    data.get('Tipo (Ej: Autentica)', ''),
-                    data.get('N° Cocimiento (Ej: 341-342-343)', ''),
-                    data.get('Tq N°(Ej: 7)', ''),
-                    data.get('pH (Ej: 4.36)', ''),
-                    data.get('Color [EBC] (Ej: 9.5)', ''),
-                    data.get('Turbidez [EBC] (Ej: 18.92)', ''),
-                    data.get('Extrácto aparente [%] p/p (Ej: 2.70)', ''),
-                    data.get('Extrácto original [%] p/p (Ej: 16.0)', '')
-                ])
-            elif collection_name == 'tanque_presion':
-                row.extend([
-                    data.get('Tipo (Ej: Trimalta )', ''),
-                    data.get('N° Cocimiento (Ej:125-126)', ''),
-                    data.get('Tp N° (Ej: 2)', ''),
-                    data.get('Tq N° (Ej: 9-7-6)', ''),
-                    data.get('Sedimentos (0/S/SS/SSS) (EJ: S)', ''),
-                    data.get('Color [EBC] (Ej: 7.5)', ''),
-                    data.get('Extrácto aparente [%] p/p (Ej: 2.06)', ''),
-                    data.get('Volumen total [L] (Ej: 6650)', ''),
-                    data.get('Volumen H2O [L] (Ej: 1850)', ''),
-                    data.get('Tanque A (Ej: 1)', ''),
-                    data.get('Volumen total del Tanque A [L] (Ej: 2650)', ''),
-                    data.get('Tanque B (Ej: 14)', ''),
-                    data.get('Volumen total del Tanque B [L] (Ej: 1950)', ''),
-                    data.get('Tanque C (Ej: 9)', ''),
-                    data.get('Volumen total del Tanque C [L] (Ej: 200)', ''),
-                    data.get('Observaciones', '')
-                ])
-            elif collection_name == 'envasado':
-                row.extend([
-                    data.get('Tipo (Ej: Occidental)', ''),
-                    data.get('Calibre [ml] (Ej: 620)', ''),
-                    data.get('Tq N° (Ej: 10-12)', ''),
-                    data.get('Tp N° (Ej: 1)', ''),
-                    data.get('N° Cocimiento (Ej: 91-92-95-96)', ''),
-                    data.get('Turbidez [EBC] (Ej: 0.3)', ''),
-                    data.get('Degustación (OK ; no OK)', ''),
-                    data.get('Sedimentos (0/S/SS/SSS) (Ej: 0)', ''),
-                    data.get('T set [°C] (Pasteurizadora) (Ej: 69)', ''),
-                    data.get('T max [°C] (Pasteurizadora) (Ej: 69.1)', ''),
-                    data.get('UP', ''),
-                    data.get('NaOH [%] (Lavadora) (Ej: 0.48)', ''),
-                    data.get('Observaciones (Ej: Adición 1/2 bolsa soda)', '')
-                ])
-            elif collection_name == 'producto_terminado':
-                row.extend([
-                    data.get('Código (Envasado/Vencimiento) (Ej: L = 150-00438 / V = 30-5-26)', ''),
-                    data.get('Tipo (Ej: Trimalta Quinua)', ''),
-                    data.get('Calibre [ml] (Ej: 300)', ''),
-                    data.get('Tq N° (Ej: 1-10)', ''),
-                    data.get('Tp N° (Ej: 2)', ''),
-                    data.get('N° Cocimiento (Ej: 63-64)', ''),
-                    data.get('pH (Ej: 4.67)', ''),
-                    data.get('Color [EBC] (Ej: 150)', ''),
-                    data.get('Extrácto aparente [%] p/p (Ej: 11.2)', ''),
-                    data.get('Espuma [seg] (123)', ''),
-                    data.get('Sedimentos 0°C (0/S/SS/SSS) (Ej: S)', ''),
-                    data.get('Sedimentos 20°C (0/S/SS/SSS) (Ej: SS)', ''),
-                    data.get('Observaciones', '')
-                ])
-            
-            new_rows.append(row)
+                # ESTRUCTURA ESPECIAL PARA COCIMIENTO (filas desde la 6)
+                # Columna B (índice 1) - Fecha
+                # Columna D (índice 3) - N° Cocimiento
+                # Columna E (índice 4) - A Tq N°
+                # Columna F (índice 5) - pH (Mosto Macerado)
+                # Columna H (índice 7) - Extracto Primer Mosto
+                # Columna J (índice 9) - Extracto Mosto Frío
+                # Columna K (índice 10) - pH(Mosto Frío)
+                # Columna L (índice 11) - Color EBC
+                # Columna M (índice 12) - Observaciones
+                
+                # Crear fila con 13 columnas vacías (A hasta M)
+                row = [''] * 13
+                
+                # Llenar las columnas específicas
+                row[1] = fecha  # Columna B
+                row[3] = data.get('N° Cocimiento (Ej: 102)', '')  # Columna D
+                row[4] = data.get('A Tq N° (Ej: 4)', '')  # Columna E
+                row[5] = data.get('pH (Mosto Macerado) (Ej: 5.4)', '')  # Columna F
+                row[7] = data.get('Extracto original [%] p/p (Primer Mosto) (Ej: 18.5)', '')  # Columna H
+                row[9] = data.get('Extracto original [%] p/p (Mosto Frío) (Ej: 16.5)', '')  # Columna J
+                row[10] = data.get('pH(Mosto Frío) (Ej: 5.43)', '')  # Columna K
+                row[11] = data.get('Color [EBC] (Mosto Frío) (Ej: 8.5)', '')  # Columna L
+                row[12] = data.get('Observaciones (Ej: Sin muestra frío)', '')  # Columna M
+                
+                new_rows.append(row)
+                
+            else:
+                # Para las otras colecciones, mantener formato original
+                row = [fecha]
+                
+                if collection_name == 'fermentacion':
+                    row.extend([
+                        data.get('Tipo (Ej: Autentica)', ''),
+                        data.get('N° Cocimiento (Ej: 341-342-343)', ''),
+                        data.get('Tq N°(Ej: 7)', ''),
+                        data.get('pH (Ej: 4.36)', ''),
+                        data.get('Color [EBC] (Ej: 9.5)', ''),
+                        data.get('Turbidez [EBC] (Ej: 18.92)', ''),
+                        data.get('Extrácto aparente [%] p/p (Ej: 2.70)', ''),
+                        data.get('Extrácto original [%] p/p (Ej: 16.0)', '')
+                    ])
+                elif collection_name == 'tanque_presion':
+                    row.extend([
+                        data.get('Tipo (Ej: Trimalta )', ''),
+                        data.get('N° Cocimiento (Ej:125-126)', ''),
+                        data.get('Tp N° (Ej: 2)', ''),
+                        data.get('Tq N° (Ej: 9-7-6)', ''),
+                        data.get('Sedimentos (0/S/SS/SSS) (EJ: S)', ''),
+                        data.get('Color [EBC] (Ej: 7.5)', ''),
+                        data.get('Extrácto aparente [%] p/p (Ej: 2.06)', ''),
+                        data.get('Volumen total [L] (Ej: 6650)', ''),
+                        data.get('Volumen H2O [L] (Ej: 1850)', ''),
+                        data.get('Tanque A (Ej: 1)', ''),
+                        data.get('Volumen total del Tanque A [L] (Ej: 2650)', ''),
+                        data.get('Tanque B (Ej: 14)', ''),
+                        data.get('Volumen total del Tanque B [L] (Ej: 1950)', ''),
+                        data.get('Tanque C (Ej: 9)', ''),
+                        data.get('Volumen total del Tanque C [L] (Ej: 200)', ''),
+                        data.get('Observaciones', '')
+                    ])
+                elif collection_name == 'envasado':
+                    row.extend([
+                        data.get('Tipo (Ej: Occidental)', ''),
+                        data.get('Calibre [ml] (Ej: 620)', ''),
+                        data.get('Tq N° (Ej: 10-12)', ''),
+                        data.get('Tp N° (Ej: 1)', ''),
+                        data.get('N° Cocimiento (Ej: 91-92-95-96)', ''),
+                        data.get('Turbidez [EBC] (Ej: 0.3)', ''),
+                        data.get('Degustación (OK ; no OK)', ''),
+                        data.get('Sedimentos (0/S/SS/SSS) (Ej: 0)', ''),
+                        data.get('T set [°C] (Pasteurizadora) (Ej: 69)', ''),
+                        data.get('T max [°C] (Pasteurizadora) (Ej: 69.1)', ''),
+                        data.get('UP', ''),
+                        data.get('NaOH [%] (Lavadora) (Ej: 0.48)', ''),
+                        data.get('Observaciones (Ej: Adición 1/2 bolsa soda)', '')
+                    ])
+                elif collection_name == 'producto_terminado':
+                    row.extend([
+                        data.get('Código (Envasado/Vencimiento) (Ej: L = 150-00438 / V = 30-5-26)', ''),
+                        data.get('Tipo (Ej: Trimalta Quinua)', ''),
+                        data.get('Calibre [ml] (Ej: 300)', ''),
+                        data.get('Tq N° (Ej: 1-10)', ''),
+                        data.get('Tp N° (Ej: 2)', ''),
+                        data.get('N° Cocimiento (Ej: 63-64)', ''),
+                        data.get('pH (Ej: 4.67)', ''),
+                        data.get('Color [EBC] (Ej: 150)', ''),
+                        data.get('Extrácto aparente [%] p/p (Ej: 11.2)', ''),
+                        data.get('Espuma [seg] (123)', ''),
+                        data.get('Sedimentos 0°C (0/S/SS/SSS) (Ej: S)', ''),
+                        data.get('Sedimentos 20°C (0/S/SS/SSS) (Ej: SS)', ''),
+                        data.get('Observaciones', '')
+                    ])
+                
+                new_rows.append(row)
         
         # Escribir nuevos datos
         if new_rows:
-            # Encontrar la última fila con datos
-            existing_data = sheet.get_all_values()
-            last_row = len(existing_data) + 1 if len(existing_data) > 1 else 2
-            
-            # Escribir los nuevos datos
-            for i, row in enumerate(new_rows):
-                range_start = f'A{last_row + i}'
-                range_end = chr(65 + len(row) - 1) + str(last_row + i)
-                sheet.update(f'{range_start}:{range_end}', [row])
+            # Para COCIMIENTO: empezar desde fila 6
+            if collection_name == 'cocimiento':
+                # Buscar la última fila con datos (empezando desde fila 6)
+                existing_data = worksheet.get_all_values()
+                last_row = 6  # Empezar en fila 6
+                
+                # Encontrar la última fila no vacía desde la 6 hacia abajo
+                for i in range(5, len(existing_data)):
+                    if existing_data[i]:  # Si la fila tiene datos
+                        last_row = i + 1
+                
+                # Escribir datos desde la última fila vacía
+                for i, row in enumerate(new_rows):
+                    range_start = f'A{last_row + i}'
+                    range_end = f'M{last_row + i}'  # Hasta columna M
+                    worksheet.update(f'{range_start}:{range_end}', [row])
+                    
+            else:
+                # Para otras colecciones: formato normal
+                existing_data = worksheet.get_all_values()
+                last_row = len(existing_data) + 1 if len(existing_data) > 1 else 2
+                
+                for i, row in enumerate(new_rows):
+                    range_start = f'A{last_row + i}'
+                    range_end = chr(65 + len(row) - 1) + str(last_row + i)
+                    worksheet.update(f'{range_start}:{range_end}', [row])
             
             return len(new_rows)
         return 0
             
     except Exception as e:
         print(f"❌ Error en {collection_name}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return 0
 
 # Sincronizar todos los datos
@@ -259,19 +262,12 @@ def sync_data():
         
         for collection_name in collections:
             try:
-                # Obtener o crear la hoja
+                # Obtener la hoja
                 try:
                     worksheet = spreadsheet.worksheet(collection_name.capitalize())
                 except:
-                    worksheet = spreadsheet.add_worksheet(
-                        title=collection_name.capitalize(), 
-                        rows=100, 
-                        cols=20
-                    )
-                    # Agregar headers
-                    headers = get_headers_for_collection(collection_name)
-                    worksheet.update('A1', [headers])
-                    print(f"✅ Hoja {collection_name} creada con headers")
+                    print(f"⚠️ Hoja {collection_name} no encontrada, saltando...")
+                    continue
                 
                 # Obtener fechas existentes (primera columna)
                 existing_data = worksheet.get_all_values()
