@@ -219,9 +219,14 @@ def sync_collection(collection_name, worksheet, existing_ids):
             last_row = start_row
             
             # Encontrar la última fila no vacía desde la fila de inicio hacia abajo
+            # Buscar la primera fila VACÍA después de los datos existentes
             for i in range(start_row-1, len(existing_data)):
-                if existing_data[i]:  # Si la fila tiene datos
-                    last_row = i + 1
+               if not existing_data[i]:  # Si la fila está VACÍA
+                   last_row = i + 1
+                   break
+            else:
+                # Si no encontró filas vacías, usar la siguiente después de la última
+                last_row = len(existing_data) + 1
             
             # Determinar el rango de columnas según la colección
             if collection_name == 'cocimiento':
