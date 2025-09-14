@@ -82,7 +82,7 @@ def keep_alive():
         print(f"⚠️ Keep-alive falló: {str(e)}")
 
 # Sincronizar una colección específica
-def sync_collection(collection_name, worksheet, existing_dates):
+def sync_collection(collection_name, worksheet, existing_ids):
     db = setup_firebase()
     if not db:
         return 0
@@ -97,35 +97,25 @@ def sync_collection(collection_name, worksheet, existing_dates):
             data = doc.to_dict()
             fecha = data.get('date', '')
             
-            # Verificar si ya existe en Sheets por fecha
-            if fecha in existing_dates:
+            # ✅ VERIFICAR POR ID DE FIREBASE (NO POR FECHA)
+            if doc.id in existing_ids:
                 continue
             
             if collection_name == 'cocimiento':
-                # ESTRUCTURA ESPECIAL PARA COCIMIENTO (filas desde la 6)
-                # Columna B (índice 1) - Fecha
-                # Columna D (índice 3) - N° Cocimiento
-                # Columna E (índice 4) - A Tq N°
-                # Columna F (índice 5) - pH (Mosto Macerado)
-                # Columna H (índice 7) - Extracto Primer Mosto
-                # Columna J (índice 9) - Extracto Mosto Frío
-                # Columna K (índice 10) - pH(Mosto Frío)
-                # Columna L (índice 11) - Color EBC
-                # Columna M (índice 12) - Observaciones
-                
-                # Crear fila con 13 columnas vacías (A hasta M)
+                # ... (el resto del código igual)
                 row = [''] * 13
+                row[1] = fecha
+                row[3] = data.get('N° Cocimiento (Ej: 102)', '')
+                row[4] = data.get('A Tq N° (Ej: 4)', '')
+                row[5] = data.get('pH (Mosto Macerado) (Ej: 5.4)', '')
+                row[7] = data.get('Extracto original [%] p/p (Primer Mosto) (Ej: 18.5)', '')
+                row[9] = data.get('Extracto original [%] p/p (Mosto Frío) (Ej: 16.5)', '')
+                row[10] = data.get('pH(Mosto Frío) (Ej: 5.43)', '')
+                row[11] = data.get('Color [EBC] (Mosto Frío) (Ej: 8.5)', '')
+                row[12] = data.get('Observaciones (Ej: Sin muestra frío)', '')
                 
-                # Llenar las columnas específicas
-                row[1] = fecha  # Columna B
-                row[3] = data.get('N° Cocimiento (Ej: 102)', '')  # Columna D
-                row[4] = data.get('A Tq N° (Ej: 4)', '')  # Columna E
-                row[5] = data.get('pH (Mosto Macerado) (Ej: 5.4)', '')  # Columna F
-                row[7] = data.get('Extracto original [%] p/p (Primer Mosto) (Ej: 18.5)', '')  # Columna H
-                row[9] = data.get('Extracto original [%] p/p (Mosto Frío) (Ej: 16.5)', '')  # Columna J
-                row[10] = data.get('pH(Mosto Frío) (Ej: 5.43)', '')  # Columna K
-                row[11] = data.get('Color [EBC] (Mosto Frío) (Ej: 8.5)', '')  # Columna L
-                row[12] = data.get('Observaciones (Ej: Sin muestra frío)', '')  # Columna M
+                # ✅ AGREGAR EL ID COMO PRIMERA COLUMNA OCULTA
+                row[0] = doc.id  # Columna A - ID oculto
                 
                 new_rows.append(row)
                 
@@ -271,7 +261,7 @@ def sync_data():
                 
                 # Obtener fechas existentes (primera columna)
                 existing_data = worksheet.get_all_values()
-                existing_dates = set()
+                existing_ids = set()
                 
                 if len(existing_data) > 1:
                     for row in existing_data[1:]:
@@ -279,7 +269,7 @@ def sync_data():
                             existing_dates.add(row[0])
                 
                 # Sincronizar esta colección
-                new_count = sync_collection(collection_name, worksheet, existing_dates)
+                new_count = sync_collection(collection_name, worksheet, existing_ids)
                 total_new += new_count
                 
                 if new_count > 0:
