@@ -124,6 +124,9 @@ def calcular_extracto_real(extracto_original, alcohol_peso):
     except:
         return ""
 
+# Diccionario global para almacenar alcohol por volumen por tanque y fecha
+tanques_alcohol = {}
+
 # Sincronizar una colección específica
 def sync_collection(collection_name, worksheet, existing_ids):
     db = setup_firebase()
@@ -175,6 +178,12 @@ def sync_collection(collection_name, worksheet, existing_ids):
                 alcohol_volumen = calcular_alcohol_volumen(alcohol_peso, peso_esp) if alcohol_peso and peso_esp else ""
                 extracto_real = calcular_extracto_real(extracto_original, alcohol_peso) if extracto_original and alcohol_peso else ""
                 
+                # Guardar en diccionario para uso en tanque de presión
+                numero_tanque = data.get('Tq N°(Ej: 7)', '')
+                if numero_tanque and alcohol_volumen:
+                    clave_unica = f"TQ{numero_tanque}-{fecha}"
+                    tanques_alcohol[clave_unica] = alcohol_volumen
+                
                 row = [''] * 15  # A-O (15 columnas para incluir cálculos)
                 row[0] = doc.id  # Columna A: ID oculto
                 row[1] = fecha  # Columna B: Fecha
@@ -196,7 +205,39 @@ def sync_collection(collection_name, worksheet, existing_ids):
                 
             elif collection_name == 'tanque_presion':
                 # TANQUE DE PRESIÓN - desde fila 5
-                row = [''] * 20  # A-T (20 columnas)
+                alcohol_final = ""
+                
+                # Calcular alcohol final si hay datos de tanques
+                try:
+                    volumen_total = float(data.get('Volumen total [L] (Ej: 6650)', 0))
+                    if volumen_total > 0:
+                        alcohol_total = 0
+                        volumen_cerveza_total = 0
+                        
+                        # Para cada tanque (A, B, C)
+                        for tanque in ['A', 'B', 'C']:
+                            num_tanque = data.get(f'Tanque {tanque} (Ej: 1)', '')
+                            volumen_str = data.get(f'Volumen total del Tanque {tanque} [L] (Ej: 2650)', '')
+                            
+                            if num_tanque and volumen_str:
+                                try:
+                                    volumen = float(volumen_str)
+                                    clave_busqueda = f"TQ{num_tanque}-{fecha}"
+                                    
+                                    if clave_busqueda in tanques_alcohol:
+                                        alcohol_vol = float(tanques_alcohol[clave_busqueda])
+                                        alcohol_total += volumen * alcohol_vol
+                                        volumen_cerveza_total += volumen
+                                except ValueError:
+                                    continue
+                        
+                        # Calcular alcohol final considerando el agua añadida
+                        if volumen_cerveza_total > 0:
+                            alcohol_final = (alcohol_total / volumen_total) * 100
+                except (ValueError, TypeError):
+                    alcohol_final = ""
+                
+                row = [''] * 21  # A-U (21 columnas, añadiendo columna U para alcohol final)
                 row[0] = doc.id  # Columna A: ID oculto
                 row[1] = fecha  # Columna B: Fecha
                 row[2] = data.get('Tipo (Ej: Trimalta )', '')  # Columna C: Tipo
@@ -217,6 +258,7 @@ def sync_collection(collection_name, worksheet, existing_ids):
                 row[17] = data.get('Volumen total del Tanque C [L] (Ej: 200)', '')  # Columna R: Volumen Tanque C
                 row[18] = data.get('Observaciones', '')  # Columna S: Observaciones
                 # Columna T vacía
+                row[20] = alcohol_final  # Columna U: Alcohol final de la mezcla
                 
                 new_rows.append(row)
                 
@@ -289,7 +331,7 @@ def sync_collection(collection_name, worksheet, existing_ids):
             elif collection_name == 'fermentacion':
                 end_col = 'O'  # Ahora va hasta la columna O por los cálculos
             elif collection_name == 'tanque_presion':
-                end_col = 'T'
+                end_col = 'U'  # Ahora va hasta la columna U por el alcohol final
             elif collection_name == 'envasado':
                 end_col = 'O'
             elif collection_name == 'producto_terminado':
@@ -314,6 +356,10 @@ def sync_collection(collection_name, worksheet, existing_ids):
 def sync_data():
     print(f"\n🔄 Sincronización: {datetime.now().strftime('%H:%M:%S')}")
     
+    # Limpiar el diccionario de alcohol al inicio de cada sincronización
+    global tanques_alcohol
+    tanques_alcohol = {}
+    
     sheets_client = setup_sheets()
     if not sheets_client:
         print("❌ No se puede sincronizar - Conexión fallida")
@@ -323,10 +369,10 @@ def sync_data():
         # Abrir la hoja de cálculo
         spreadsheet = sheets_client.open("CCB Registros Proceso")
         
-        # Nombres de las hojas
+        # Nombres de las hojas - PROCESAR FERMENTACIÓN PRIMERO
         collections = [
+            'fermentacion',  # Primero fermentación para llenar el diccionario
             'cocimiento',
-            'fermentacion', 
             'tanque_presion',
             'envasado',
             'producto_terminado'
